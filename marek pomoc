@@ -41,6 +41,7 @@ class Ghost:
         self.state = state
         self.value = value
         self.target = False
+        self.busted = False
  
 class Buster:
  
@@ -56,6 +57,7 @@ class Buster:
         self.desty = 0
         self.chasing = [False, -1]
         self.order = ""
+        self.busted = [False, -1]
  
     def move(self):
         print("move", self.id, self.destx, self.desty, file=sys.stderr)
@@ -67,11 +69,14 @@ class Buster:
  
     def bust(self, ghost_id):
         self.order = "BUST " + str(ghost_id)
+        ghost_id = True
+        self.busted = [True, ghost_id]
  
     def release_ghost(self):
         self.order = "RELEASE"
         self.catching = False
         self.chasing = [False, -1]
+        self.busted = [False, -1]
  
 busters_per_player = int(input())  # the amount of busters you control
 ghost_count = int(input())  # the amount of ghosts on the map
@@ -171,6 +176,8 @@ while True:
             print([current_buster.x, current_buster.y, current_buster.state, current_buster.catching, current_buster.destx, current_buster.desty, current_buster.chasing], file=sys.stderr)
             for ghost in ghosts:
                 print([ghost.id, ghost.x, ghost.y, ghost.state, ghost.value, ghost.target], file=sys.stderr)
+                if ghost.busted:
+                    continue
                 if not ghost.target:
                         closest = choose_closest(ghost.x, ghost.y)
                         other_buster = busters[closest[0]]
