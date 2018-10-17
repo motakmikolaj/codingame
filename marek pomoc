@@ -127,7 +127,14 @@ while True:
         if current_buster.state:
             print("x1", file=sys.stderr) 
             current_buster.base(my_team_id)
-            if abs(current_buster.x - current_buster.destx) < 120 and abs(current_buster.y - current_buster.desty) < 120:
+            sidex = current_buster.x - current_buster.destx
+            sidey = current_buster.y - current_buster.desty
+            sideL = math.sqrt(sidex**2 + sidey**2)
+            
+            print([current_buster.x, current_buster.y, current_buster.state, current_buster.catching, current_buster.destx, current_buster.desty, current_buster.chasing], file=sys.stderr)
+            print(sideL, file=sys.stderr)
+            
+            if sideL < 1600:
                 current_buster.release_ghost()
             else:
                 current_buster.move()
@@ -171,7 +178,7 @@ while True:
                        sidex = current_buster.x - ghost.x
                        sidey = current_buster.y - ghost.y
                        sideL = math.sqrt(sidex**2 + sidey**2)
-                       if sideL < 3000:
+                       if sideL < 2200:
                            if sideL < 900:
                                current_buster.destx = int(ghost.x + math.copysign(1000, sidex))
                                current_buster.desty = int(ghost.y + math.copysign(1000, sidey))
