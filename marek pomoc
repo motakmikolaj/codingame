@@ -146,6 +146,8 @@ while True:
             print([current_buster.x, current_buster.y, current_buster.state, current_buster.catching, current_buster.destx, current_buster.desty, current_buster.chasing], file=sys.stderr)
             tmp = 0
             for i in ghosts:
+                if i.busted:
+                    continue
                 print([i.id, i.x, i.y, i.state, i.value, i.target], file=sys.stderr)
                 tmp += 1
                 if i.id == current_buster.chasing[1]:
