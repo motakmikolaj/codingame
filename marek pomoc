@@ -45,19 +45,21 @@ class Buster:
         self.destx = 0
         self.desty = 0
         self.chasing = [False, -1]
+        self.order = ""
  
     def move(self):
-        print("MOVE", self.destx, self.desty)
+        print("move", self.id, self.destx, self.desty, file=sys.stderr)
+        self.order = "MOVE " + str(self.destx) + " " + str(self.desty)
  
     def base(self, team_id):
         self.destx = team_id * 16000
         self.desty = team_id * 9000
  
     def bust(self, ghost_id):
-        print("BUST", ghost_id)
+        self.order = "BUST " + str(ghost_id)
  
     def release_ghost(self):
-        print("RELEASE")
+        self.order = "RELEASE"
         self.catching = False
         self.chasing = [False, -1]
  
@@ -136,18 +138,26 @@ while True:
             for i in ghosts:
                 print([i.id, i.x, i.y, i.state, i.value], file=sys.stderr)
                 tmp += 1
-                if i.id == current_buster.chasing[1]:
+                if i.id == current_buster.chasing[1]: 
+                    sidex = current_buster.x - i.x
+                    sidey = current_buster.y - i.y
                     sideL = math.sqrt((i.x - current_buster.x)**2 + (i.y - current_buster.y)**2)
+                    print("true", sideL, file=sys.stderr)
                     if sideL < 1760:
                         if sideL > 900:
                             current_buster.catching = True
                             current_buster.bust(i.id)
                             break
                         else:
+                            current_buster.destx = int(i.x + math.copysign(637, sidex))
+                            current_buster.desty = int(i.y + math.copysign(637, sidey))
                             current_buster.move()
                             break
                     else:
+                        current_buster.destx = int(i.x + math.copysign(637, sidex))
+                        current_buster.desty = int(i.y + math.copysign(637, sidey))
                         current_buster.move()
+                        
                         break
             if tmp == len(ghosts):
                 current_buster.chasing = [False, 0]
@@ -197,4 +207,8 @@ while True:
                     vertical = random.randint(vmove[vmovetmp], vmove[vmovetmp+1])
                     current_buster.destx = horizontal
                     current_buster.desty = vertical
+                print(current_buster.id, "move4", file=sys.stderr) 
                 current_buster.move()
+                
+                              
+        print(current_buster.order)
