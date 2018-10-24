@@ -1,224 +1,130 @@
 import sys
 import math
-import random
 
-ghosts = []
-busters = []
-initiate_area = 0
-add_busters = 0
-vmovetmp = 0
-vmove = [1950, 3900, 5850, 7000]
-horizontal = 0
-vertical = 0
-afk = 0
- 
-def hunt_area(number_of_busters):
-    tmp = int(16000/number_of_busters)
-    result = [1000]
-    for i in range(number_of_busters):
-        result.append(tmp*(i+1))
-    result.append(14500)
-    return result
- 
-def choose_closest(x, y):
-    smallest = 9999999
-    tmp = 0
-    for i in range(len(busters)):
-        sidex = busters[i].x - x
-        sidey = busters[i].y - y
-        sideL = math.sqrt(sidex**2 + sidey**2)
-        if sideL < smallest:
-            smallest = sideL
-            tmp = i
-    return [tmp, smallest]
- 
-class Ghost:
- 
-    def __init__(self, id, x, y, state, value):
-        self.id = id
-        self.x = x
-        self.y = y
-        self.state = state
-        self.value = value
-        self.target = False
-        self.busted = False
- 
-class Buster:
- 
-    def __init__(self, id, x, y, left, right, state, value):
-        self.id = id
-        self.x = x
-        self.y = y
-        self.left = left
-        self.right = right
-        self.state = state
-        self.catching = False
-        self.destx = 0
-        self.desty = 0
-        self.chasing = [False, -1]
-        self.order = ""
-        self.busted = [False, -1]
- 
-    def move(self):
-        print("move", self.id, self.destx, self.desty, file=sys.stderr)
-        self.order = "MOVE " + str(self.destx) + " " + str(self.desty)
- 
-    def base(self, team_id):
-        self.destx = team_id * 16000
-        self.desty = team_id * 9000
- 
-    def bust(self, ghost_id):
-        self.order = "BUST " + str(ghost_id)
-        ghost_id = True
-        self.busted = [True, ghost_id]
- 
-    def release_ghost(self):
-        self.order = "RELEASE"
-        self.catching = False
-        self.chasing = [False, -1]
-        self.busted = [False, -1]
- 
+def odleglosc(x1, y1, x2, y2):
+    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+tab1 = [(2,2),(3,2),(4,3),(5,3),(5,2),(6,2),(7,2),(8,2),(9,0),(7,1),(5,1),(3,1),(2,1),(4,2),(6,3),(7,3),(8,3),(8,4),(7,4),(6,5)] #prawo
+tab2 = [(2,2),(2,3),(3,4),(4,4),(5,4),(6,4),(5,5),(3,5),(2,5),(1,5),(0,6),(1,3),(1,2),(3,3),(2,4),(3,5),(4,5),(5,5),(8,1),(6,1)] #lewo
+tab3 = [(2,2),(3,3),(4,4),(5,3),(6,3),(7,3),(8,3),(8,4),(7,4),(6,5),(4,5),(3,5),(2,4),(1,5),(1,4),(7,5),(8,5),(4,3),(1,1),(0,0)] #srodek
+pointer = [0,0,0,10,10]
 busters_per_player = int(input())  # the amount of busters you control
 ghost_count = int(input())  # the amount of ghosts on the map
-my_team_id = int(input())  # if this is 0, your base is on the top left of the map, if it is one, on the bottom right
-hunt_area = hunt_area(busters_per_player)  #divides space to create areas for each buster to patrol
- 
+my_team_id  = int(input())  # if this is 0, your base is on the top left of the map, if it is one, on the bottom right
+op_team_id  = (my_team_id - 1) * (-1)
+my_cooldown = {}
+
+if my_team_id == 0:
+    my_base_x = 0
+    my_base_y = 0
+    mapx = [0, 1000, 3000, 5000, 7000, 9000, 11000, 13000, 15000, 16000]  
+    mapy = [0, 1000, 2750, 4500, 6250, 8000, 9000]
+else:
+    my_base_x = 16000
+    my_base_y = 9000  
+    mapx = [16000, 15000, 13000, 11000, 9000, 7000, 5000, 3000, 1000, 0]  
+    mapy = [9000, 8000, 6250, 4500, 2750, 1000, 0]
+
+# ====================================    
 # game loop
+# ====================================  
+turn = 0
+
 while True:
     entities = int(input())  # the number of busters and ghosts visible to you
+    my_bust  = {} #list of our busters
+    op_bust  = {} #list of opposite busters
+    visible  = {} #list of visible ghosts
+    
     for i in range(entities):
         entity_id, x, y, entity_type, state, value = [int(j) for j in input().split()]
-        if entity_type == -1:
-            add = True
-            for i in ghosts:
-                if i.id == entity_id:
-                    add = False
-            if add:
-                ghosts.append(Ghost(entity_id, x, y, state, value))
+        if   (entity_type == 0):
+            if (my_team_id == 0):
+                my_bust[entity_id] = [x, y, entity_type, state, value]
             else:
-                for i in ghosts:
-                    if i.id == entity_id:
-                        i.x = x
-                        i.y = y
-                        i.state = state
-                        i.value = value
-        elif add_busters < busters_per_player and entity_type == my_team_id:
-            busters.append(Buster(entity_id, x, y, -1, -1, state, value))
-            add_busters += 1
-        elif entity_type == my_team_id:
-            for i in busters:
-                if i.id == entity_id:
-                    i.state = state
-                    i.value = value
-                    i.x = x
-                    i.y = y
- 
-    for i in range(busters_per_player):
-        print("================", file=sys.stderr)
-        print(i, file=sys.stderr)
-        current_buster = busters[i]
- 
-        if initiate_area < busters_per_player:
-                current_buster.left = hunt_area[i]
-                current_buster.right = hunt_area[i+1]
-                initiate_area += 1
-                horizontal = random.randint(current_buster.left, current_buster.right)
-                vertical = random.randint(vmove[vmovetmp], vmove[vmovetmp+1])
-                current_buster.destx = horizontal
-                current_buster.desty = vertical
- 
-        if current_buster.state:
-            print("x1", file=sys.stderr)
-            current_buster.base(my_team_id)
-            sidex = current_buster.x - current_buster.destx
-            sidey = current_buster.y - current_buster.desty
-            sideL = math.sqrt(sidex**2 + sidey**2)
-           
-            print([current_buster.x, current_buster.y, current_buster.state, current_buster.catching, current_buster.destx, current_buster.desty, current_buster.chasing], file=sys.stderr)
-            print(sideL, file=sys.stderr)
-           
-            if sideL < 1600:
-                current_buster.release_ghost()
+                op_bust[entity_id] = [x, y, entity_type, state, value]
+        elif (entity_type == 1):
+            if (my_team_id == 1):
+                my_bust[entity_id] = [x, y, entity_type, state, value]
             else:
-                current_buster.move()
-        elif current_buster.chasing[0]:
-            print("x2", file=sys.stderr)
-            print([current_buster.x, current_buster.y, current_buster.state, current_buster.catching, current_buster.destx, current_buster.desty, current_buster.chasing], file=sys.stderr)
-            tmp = 0
-            for i in ghosts:
-                if i.busted:
-                    continue
-                print([i.id, i.x, i.y, i.state, i.value, i.target], file=sys.stderr)
-                tmp += 1
-                if i.id == current_buster.chasing[1]:
-                    sidex = current_buster.x - i.x
-                    sidey = current_buster.y - i.y
-                    sideL = math.sqrt((i.x - current_buster.x)**2 + (i.y - current_buster.y)**2)
-                    print("true", sideL, file=sys.stderr)
-                    if sideL < 1760:
-                        if sideL > 900:
-                            current_buster.catching = True
-                            current_buster.bust(i.id)
-                            break
-                        else:
-                            current_buster.destx = int(i.x + math.copysign(637, sidex))
-                            current_buster.desty = int(i.y + math.copysign(637, sidey))
-                            current_buster.move()
-                            break
-                    else:
-                        current_buster.destx = int(i.x + math.copysign(637, sidex))
-                        current_buster.desty = int(i.y + math.copysign(637, sidey))
-                        current_buster.move()
-                       
-                        break
-            if tmp == len(ghosts):
-                current_buster.chasing = [False, 0]
+                op_bust[entity_id] = [x, y, entity_type, state, value]
         else:
-            print("x3", file=sys.stderr)
-            print([current_buster.x, current_buster.y, current_buster.state, current_buster.catching, current_buster.destx, current_buster.desty, current_buster.chasing], file=sys.stderr)
-            for ghost in ghosts:
-                print([ghost.id, ghost.x, ghost.y, ghost.state, ghost.value, ghost.target], file=sys.stderr)
-                if ghost.busted:
-                    continue
-                if not ghost.target:
-                        closest = choose_closest(ghost.x, ghost.y)
-                        other_buster = busters[closest[0]]
-                        print(["other", other_buster.id, "ghost:", ghost.id, ghost.x, ghost.y], file=sys.stderr)
-                        sideL = closest[1]
-                        sidex = other_buster.x - ghost.x
-                        sidey = other_buster.y - ghost.y
-                        #sideL = math.sqrt(sidex**2 + sidey**2)
-                        #if sideL < 2200:
-                        if sideL < 900:
-                            other_buster.destx = int(ghost.x + math.copysign(1000, sidex))
-                            other_buster.desty = int(ghost.y + math.copysign(1000, sidey))
-                            ghost.target = True
-                            other_buster.chasing = [True, ghost.id]
-                            print(other_buster.id, "move1", file=sys.stderr)
-                            other_buster.move()
-                            break
-                        elif math.sqrt((ghost.x - other_buster.x)**2 + (ghost.y - other_buster.y)**2) > 1700:
-                            other_buster.destx = int(ghost.x + math.copysign(1000, sidex))
-                            other_buster.desty = int(ghost.y + math.copysign(1000, sidey))
-                            ghost.target = True
-                            other_buster.chasing = [True, ghost.id]
-                            print(other_buster.id, "move2", file=sys.stderr)
-                            other_buster.move()
-                            break
-                        else:
-                            print(other_buster.id, "move3", file=sys.stderr)
-                            other_buster.catching = True
-                            other_buster.bust(ghost.id)
-                            break
+            visible[entity_id] = [x, y, entity_type, state, value]
+        
+    print(my_bust, file=sys.stderr)   
+    print(op_bust, file=sys.stderr)   
+    print(visible, file=sys.stderr)   
+    
+    for b in my_bust:
+        print(my_bust[b], file=sys.stderr) 
+        
+        if not (b in my_cooldown):
+            my_cooldown[b] = 0
 
-            if not current_buster.catching:
-                if current_buster.x == current_buster.destx and current_buster.y == current_buster.desty:
-                    vmovetmp = (vmovetmp + 1) % 3
-                    horizontal = random.randint(current_buster.left, current_buster.right)
-                    vertical = random.randint(vmove[vmovetmp], vmove[vmovetmp+1])
-                    current_buster.destx = horizontal
-                    current_buster.desty = vertical
-                print(current_buster.id, "move4", file=sys.stderr)
-                current_buster.move()
-                            
-        print(current_buster.order)
+        stun = -1
+        if(my_cooldown[b] == 0):
+            for ob in op_bust:
+                if(op_bust[ob][3] != 2):
+                    if (odleglosc(my_bust[b][0], my_bust[b][1], op_bust[ob][0], op_bust[ob][1]) < 1760):
+                        stun = ob
+                        break              
+        if stun != -1:
+            print("STUN " + str(stun))
+            my_cooldown[b] = 20
+        elif my_bust[b][3] == 1:
+            if odleglosc(my_bust[b][0], my_bust[b][1], my_base_x, my_base_y) < 1600:
+                print("RELEASE")
+            else:
+                print("MOVE " + str(my_base_x) + " " + str(my_base_y))
+        else:
+            closest = [-1,-1]
+            howfar0 = -1
+            bust = -1
+            for g in visible:
+                howfar = odleglosc(my_bust[b][0], my_bust[b][1], visible[g][0], visible[g][1])
+                if ((howfar < 1760) and (howfar > 900)):
+                    bust = g
+                    break
+                elif closest == [-1,-1]:
+                    closest = [visible[g][0], visible[g][1]]
+                    howfar0 = howfar
+                elif (howfar > 1760) and (howfar0 > howfar):
+                    closest = [visible[g][0], visible[g][1]]
+                    howfar0 = howfar
+                elif (howfar < 900) and (howfar0 > howfar + 800):
+                    closest = [visible[g][0], visible[g][1]]
+                    howfar0 = howfar
+                        
+            if (bust != -1):
+                print("BUST " + str(bust))
+            elif (closest != [-1,-1]):
+                print("MOVE " + str(closest[0]) + " " + str(closest[1]))
+            else:
+                d = b
+                if my_team_id == 1:
+                    d = d - busters_per_player
+                if (d == 0 or d == 3):
+                    print("OX0", mapx[tab1[pointer[d]][0]], mapy[tab1[pointer[d]][1]], file=sys.stderr) 
+                    if(my_bust[b][0] == mapx[tab1[pointer[d]][0]] and my_bust[b][1] == mapy[tab1[pointer[d]][1]]):
+                        pointer[d] += 1
+                        if pointer[d] >= 20:
+                            pointer[d] = 0
+                    print("MOVE " + str(mapx[tab1[pointer[d]][0]]) + " " + str(mapy[tab1[pointer[d]][1]]))
+                elif (d == 1 or d == 4):
+                    print("OX1", mapx[tab2[pointer[d]][0]], mapy[tab2[pointer[d]][1]], file=sys.stderr) 
+                    if(my_bust[b][0] == mapx[tab2[pointer[d]][0]] and my_bust[b][1] == mapy[tab2[pointer[d]][1]]):
+                        pointer[d] += 1
+                        if pointer[d] >= 20:
+                            pointer[d] = 0
+                    print("MOVE " + str(mapx[tab2[pointer[d]][0]]) + " " + str(mapy[tab2[pointer[d]][1]]))
+                else:
+                    print("OX2", mapx[tab3[pointer[d]][0]], mapy[tab3[pointer[d]][1]], file=sys.stderr) 
+                    if(my_bust[b][0] == mapx[tab3[pointer[d]][0]] and my_bust[b][1] == mapy[tab3[pointer[d]][1]]):
+                        pointer[d] += 1
+                        if pointer[d] >= 20:
+                            pointer[d] = 0
+                    print("MOVE " + str(mapx[tab3[pointer[d]][0]]) + " " + str(mapy[tab3[pointer[d]][1]]))
+                    
+        if my_cooldown[b] > 0:
+            my_cooldown[b] -= 1
+                  
+        # MOVE x y | BUST id | RELEASE
